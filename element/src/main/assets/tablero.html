@@ -579,7 +579,6 @@ body.estrecho #compacto{display:block}
 .incest.inclinada .lamp{background:var(--ocher)}
 .consejo{font-size:12px;font-weight:600;line-height:1.3;color:var(--sand)}
 .consejo b{color:var(--bone);font-weight:800}
-.card.sin-sensor .inc{opacity:.35}
 
 /* ======================= ENTRADA · 5 SEGUNDOS =======================
    Un Element dandole la vuelta al mundo. Se dibuja entero con SVG y CSS —
@@ -1281,6 +1280,7 @@ body.estrecho #compacto{display:block}
         <span class="nm i-ocher">Inclinómetro</span>
         <span class="ld"></span>
         <span class="mt">Para parquear a nivel</span>
+        <span class="diagbtn" id="btn-centrar">Centrar</span>
       </div>
 
       <div class="incwrap">
@@ -1618,7 +1618,16 @@ body.estrecho #compacto{display:block}
   function guardar(){
     try{ if(window.Puente && Puente.guardarCuadros) Puente.guardarCuadros(JSON.stringify(cfg)); }catch(e){}
   }
-  function oculto(id){ return cfg.ocultos.indexOf(id) >= 0; }
+  // Un cuadro tambien puede FALTAR: el radio no tiene con que medirlo (el
+  // inclinometro sin sensor). No es un oculto del dueño —no se guarda ni sale
+  // en "Mostrar ocultos"—, pero tampoco se coloca.
+  var faltan = {};
+  function oculto(id){ return cfg.ocultos.indexOf(id) >= 0 || !!faltan[id]; }
+  window.cuadroDisponible = function(id, si){
+    var antes = !!faltan[id];
+    faltan[id] = !si;
+    if(antes !== !si) acomodar();
+  };
 
   var W = ANCHO - 2 * PAD, k = 1, defecto = {};
 
@@ -1636,13 +1645,26 @@ body.estrecho #compacto{display:block}
     if(fila.length) filas.push(fila);
     var total = 0;
     filas.forEach(function(f){
-      var suma = 0, alto = 0;
-      f.forEach(function(x){ suma += x.w; });
+      var suma = 0, base = 0;
+      f.forEach(function(x){ suma += x.w; base = Math.max(base, x.h); });
       f.k = Math.min(1.6, (W - AIRE * (f.length - 1)) / suma);
-      f.forEach(function(x){ alto = Math.max(alto, x.h * f.k); });
-      total += alto;
+      f.base = base;
+      total += base * f.k;
     });
     var huecos = AIRE * Math.max(0, filas.length - 1);
+    // Si no cabe, primero se le quita lo que CRECIO a las filas que crecieron
+    // (un cuadro solo en su fila se estira hasta 1,6) y solo despues se encoge
+    // todo. Si no, un cuadro solo en la ultima fila —el motor, cuando el radio
+    // no tiene inclinometro— encogia las filas de arriba para poder crecer el.
+    var sobra = total + huecos - disponible;
+    for(var i = filas.length - 1; i >= 0 && sobra > 0; i--){
+      var f = filas[i];
+      if(f.k <= 1) continue;
+      var quita = Math.min(sobra, (f.k - 1) * f.base);
+      f.k -= quita / f.base;
+      total -= quita;
+      sobra -= quita;
+    }
     var ajuste = (total + huecos > disponible && total > 0) ? (disponible - huecos) / total : 1;
     var y = 0, out = {};
     filas.forEach(function(f){
@@ -2311,8 +2333,10 @@ body.estrecho #compacto{display:block}
   function cm(m){ return (m * 100).toFixed(1); }
 
   function pintarInclinometro(d){
-    var hay = d.incSensor !== false;
-    var card = el("c-inc"); if(card) card.classList.toggle("sin-sensor", !hay);
+    // Opcional: el cuadro solo existe si el radio tiene sensor.
+    var hay = d.incSensor === true;
+    if(window.cuadroDisponible) cuadroDisponible("inclinometro", hay);
+    if(!hay) return;
     var a = d.incAdelante, l = d.incLado;
     var va = !(a === null || a === undefined), vl = !(l === null || l === undefined);
     set("inc-adelante-val", va ? Math.abs(a) : null, 1);
@@ -2323,12 +2347,7 @@ body.estrecho #compacto{display:block}
     var est = el("inc-estado"), txt = el("inc-estado-txt"), c1 = el("inc-c1"), c2 = el("inc-c2");
     var nivelada = va && vl && Math.abs(a) < A_NIVEL && Math.abs(l) < A_NIVEL;
     if(est){ est.classList.toggle("nivelada", nivelada); est.classList.toggle("inclinada", va && vl && !nivelada); }
-    if(txt) txt.textContent = !hay ? "Sin sensor" : (!(va && vl) ? GUION : (nivelada ? "Nivelada" : "Inclinada"));
-    if(!hay){
-      if(c1) c1.textContent = "Este radio no tiene sensor de inclinación.";
-      if(c2) c2.textContent = "";
-      return;
-    }
+    if(txt) txt.textContent = !(va && vl) ? GUION : (nivelada ? "Nivelada" : "Inclinada");
     // Cuanto subir: la diferencia de altura entre ruedas es la via (o la
     // batalla) por la tangente del angulo. Se dice el lado que hay que SUBIR.
     if(c1){
@@ -2464,6 +2483,20 @@ body.estrecho #compacto{display:block}
   mando("btn-config", function(){ Puente.abrirConfiguracion(); });
   mando("btn-tuerca", function(){ Puente.abrirConfiguracion(); });
   mando("btn-codigos", function(){ if(Puente.abrirCodigos) Puente.abrirCodigos(); });
+  var centrarArmado = null;
+  mando("btn-centrar", function(){
+    var b = el("btn-centrar"); if(!b) return;
+    if(!centrarArmado){
+      b.textContent = "¿Centrar? Toca otra vez";
+      centrarArmado = setTimeout(function(){ centrarArmado = null; b.textContent = "Centrar"; }, 3000);
+      return;
+    }
+    clearTimeout(centrarArmado); centrarArmado = null;
+    var ok = false;
+    try{ ok = !!(Puente.centrarInclinometro && Puente.centrarInclinometro()); }catch(e){}
+    b.textContent = ok ? "Centrado" : "Sin lectura";
+    setTimeout(function(){ b.textContent = "Centrar"; }, 2000);
+  });
   mando("tab-viv", function(){ elegirBateria("viv"); });
   mando("tab-arr", function(){ elegirBateria("arr"); });
   mando("btn-cerrar", function(){ if(Puente.cerrar) Puente.cerrar(); });

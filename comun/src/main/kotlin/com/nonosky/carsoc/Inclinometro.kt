@@ -64,6 +64,17 @@ object Inclinometro : SensorEventListener {
     private var usuarios = 0
     private var gestor: SensorManager? = null
 
+    /**
+     * ¿Tiene este radio sensor para medir la inclinacion? Se pregunta sin
+     * encenderlo. Sin sensor, el inclinometro no existe: ni cuadro ni ajustes.
+     */
+    fun disponible(context: Context): Boolean {
+        val sm = context.applicationContext.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+            ?: return false
+        return sm.getDefaultSensor(Sensor.TYPE_GRAVITY) != null ||
+            sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) != null
+    }
+
     /** Lo enciende quien se pone a mirar. Con cuenta: el ultimo en irse lo apaga. */
     @Synchronized
     fun encender(context: Context) {

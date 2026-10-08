@@ -443,6 +443,13 @@ class TableroActivity : Activity(), TableroLienzo.Mandos {
             abrirAverias()
         }
 
+        /**
+         * CENTRAR el inclinometro: lo que se lee ahora pasa a ser el plano. El
+         * tablero pide confirmarlo con un segundo toque antes de llamar aqui.
+         */
+        @JavascriptInterface
+        fun centrarInclinometro(): Boolean = Inclinometro.ponerACero(this@TableroActivity)
+
         /** ESCANEAR CODIGO: leer los del carro y la base de codigos explicada. */
         @JavascriptInterface
         fun abrirCodigos() {

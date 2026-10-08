@@ -20,7 +20,7 @@ android {
         applicationId = "com.nonosky.inmyelement"
         minSdk = 21
         targetSdk = 34
-        versionCode = 219
+        versionCode = 220
         versionName = "1.5-element"
     }
 

@@ -33,8 +33,12 @@ dibujo de la Element que se inclina de verdad —de perfil para adelante y atrá
 por detrás para los lados—, amortiguado como un instrumento de líquido. Cada
 esfera dice su ángulo con un decimal, y al lado dice si está **nivelada** y
 cuántos centímetros subir cada lado, calculado con la batalla (2,575 m) y la vía
-(1,58 m) de la Element. Usa el sensor del radio solo mientras se mira, y se pone
-a cero en Ajustes con la camioneta en plano.
+(1,58 m) de la Element. Es **opcional**: solo aparece si el radio tiene sensor de
+inclinación (muchos no lo traen). Como el radio casi nunca va 100 % derecho, se
+**centra** con la camioneta en plano —con el botón «Centrar» del propio cuadro,
+que pide un segundo toque para no descalibrarlo de un roce, o en Ajustes—, y
+cada eje se puede invertir si el sensor va montado al revés. Usa el sensor solo
+mientras se mira.
 
 **Refrigeradora (Alpicool por Bluetooth LE).** Temperatura, consigna, encendido y
 modo eco, con mandos para subir, bajar y apagar.

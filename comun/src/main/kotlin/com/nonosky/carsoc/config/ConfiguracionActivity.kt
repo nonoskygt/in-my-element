@@ -224,8 +224,11 @@ class ConfiguracionActivity : Activity() {
             pintarAlertas()
         }
 
-        raiz.addView(separador())
-        pintarInclinometro()
+        // El inclinometro es opcional: solo si el radio tiene sensor.
+        if (Inclinometro.disponible(this)) {
+            raiz.addView(separador())
+            pintarInclinometro()
+        }
 
         raiz.addView(separador())
         pintarArranque()
@@ -341,10 +344,6 @@ class ConfiguracionActivity : Activity() {
      */
     private fun pintarInclinometro() {
         raiz.addView(subtitulo("Inclinómetro"))
-        if (Inclinometro.haySensor == false) {
-            raiz.addView(nota("Este radio no tiene sensor de inclinación: el cuadro lo dice en vez de inventar un ángulo."))
-            return
-        }
         val lectura = TextView(this).apply {
             setTextColor(TINTA)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
@@ -355,12 +354,12 @@ class ConfiguracionActivity : Activity() {
         raiz.addView(lectura)
         refrescarInclinometro()
         raiz.addView(fila(
-            "Poner a cero aquí",
-            if (Inclinometro.calibrado(this)) "Calibrado · toca solo con la camioneta en un suelo plano"
-            else "Sin calibrar · estaciona en plano y toca",
+            "Centrar",
+            if (Inclinometro.calibrado(this)) "Centrado · toca solo con la camioneta en un suelo plano"
+            else "Sin centrar · el radio casi nunca va derecho: estaciona en plano y toca",
             ok = Inclinometro.calibrado(this),
         ) {
-            aviso = if (Inclinometro.ponerACero(this)) "Inclinómetro a cero: así se ve el plano."
+            aviso = if (Inclinometro.ponerACero(this)) "Inclinómetro centrado: así se ve el plano."
             else "Todavía no hay lectura del sensor; espera un segundo y vuelve a tocar."
             pintar()
         })
