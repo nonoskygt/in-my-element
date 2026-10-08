@@ -31,6 +31,7 @@ import com.nonosky.carsoc.Arranque
 import com.nonosky.carsoc.Carro
 import com.nonosky.carsoc.ConnectionState
 import com.nonosky.carsoc.EstadoActual
+import com.nonosky.carsoc.Inclinometro
 import com.nonosky.carsoc.Variante
 import com.nonosky.carsoc.bateria.BancosBateria
 import com.nonosky.carsoc.bt.ObdPairing
@@ -117,6 +118,7 @@ class ConfiguracionActivity : Activity() {
                     tv.setTextColor(if (bien) VIVO else AMBAR)
                 }
                 refrescarLlantas()
+                refrescarInclinometro()
             }
             ui.postDelayed(this, MS_REFRESCO)
         }
@@ -138,12 +140,14 @@ class ConfiguracionActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        Inclinometro.encender(this)
         ui.removeCallbacks(refrescarEstados)
         ui.post(refrescarEstados)
     }
 
     override fun onPause() {
         ui.removeCallbacks(refrescarEstados)
+        Inclinometro.apagar()
         super.onPause()
     }
 
@@ -219,6 +223,9 @@ class ConfiguracionActivity : Activity() {
             raiz.addView(separador())
             pintarAlertas()
         }
+
+        raiz.addView(separador())
+        pintarInclinometro()
 
         raiz.addView(separador())
         pintarArranque()
@@ -327,6 +334,67 @@ class ConfiguracionActivity : Activity() {
     /** La linea con las cuatro presiones, ya corregidas. La refresca el latido. */
     private var lineaLlantas: TextView? = null
 
+    /**
+     * EL INCLINOMETRO: el cero se pone con la camioneta en un suelo plano de
+     * verdad, y cada eje se puede invertir si el radio monta el sensor al
+     * reves. La lectura de abajo se ve en vivo para comprobarlo.
+     */
+    private fun pintarInclinometro() {
+        raiz.addView(subtitulo("Inclinómetro"))
+        if (Inclinometro.haySensor == false) {
+            raiz.addView(nota("Este radio no tiene sensor de inclinación: el cuadro lo dice en vez de inventar un ángulo."))
+            return
+        }
+        val lectura = TextView(this).apply {
+            setTextColor(TINTA)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(0, dp(4), 0, dp(6))
+        }
+        lineaInclinometro = lectura
+        raiz.addView(lectura)
+        refrescarInclinometro()
+        raiz.addView(fila(
+            "Poner a cero aquí",
+            if (Inclinometro.calibrado(this)) "Calibrado · toca solo con la camioneta en un suelo plano"
+            else "Sin calibrar · estaciona en plano y toca",
+            ok = Inclinometro.calibrado(this),
+        ) {
+            aviso = if (Inclinometro.ponerACero(this)) "Inclinómetro a cero: así se ve el plano."
+            else "Todavía no hay lectura del sensor; espera un segundo y vuelve a tocar."
+            pintar()
+        })
+        val invA = Inclinometro.invertidoAdelante(this)
+        raiz.addView(fila(
+            "Adelante y atrás",
+            if (invA) "Invertido · toca para dejarlo normal" else "Normal · toca si la nariz sale al revés",
+            ok = true,
+        ) {
+            Inclinometro.invertirAdelante(this, !invA)
+            pintar()
+        })
+        val invL = Inclinometro.invertidoLado(this)
+        raiz.addView(fila(
+            "Izquierda y derecha",
+            if (invL) "Invertido · toca para dejarlo normal" else "Normal · toca si los lados salen al revés",
+            ok = true,
+        ) {
+            Inclinometro.invertirLado(this, !invL)
+            pintar()
+        })
+        raiz.addView(nota(
+            "Para comprobarlo: sube la nariz de la camioneta (por ejemplo, en una rampa) y " +
+                "la lectura tiene que decir \"nariz arriba\"; si dice lo contrario, invierte ese eje."
+        ))
+    }
+
+    /** La lectura del inclinometro en Ajustes. La refresca el latido. */
+    private var lineaInclinometro: TextView? = null
+
+    private fun refrescarInclinometro() {
+        lineaInclinometro?.text = Inclinometro.resumen()
+    }
+
     private fun refrescarLlantas() {
         val tv = lineaLlantas ?: return
         val ahora = System.currentTimeMillis()
@@ -410,9 +478,9 @@ class ConfiguracionActivity : Activity() {
     }
 
     /**
-     * ¿El tablero se abre solo al encender el radio? Las alertas de llanta,
-     * las baterias y el contador del aceite siguen trabajando en segundo plano
-     * aunque se diga que no: lo que no se abre es la pantalla.
+     * ¿El tablero se abre solo al encender el radio? Las alertas de llanta y
+     * las baterias siguen trabajando en segundo plano aunque se diga que no:
+     * lo que no se abre es la pantalla.
      */
     private fun pintarArranque() {
         val abre = Arranque.abrirAlEncender(this)
@@ -426,8 +494,8 @@ class ConfiguracionActivity : Activity() {
             pintar()
         })
         raiz.addView(nota(
-            "Aunque no se abra, siguen vigilando en segundo plano las llantas, " +
-                "las baterías y el contador del aceite."
+            "Aunque no se abra, siguen vigilando en segundo plano las llantas " +
+                "y las baterías."
         ))
     }
 

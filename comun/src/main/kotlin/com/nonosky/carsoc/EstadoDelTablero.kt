@@ -160,14 +160,6 @@ object EstadoDelTablero {
         val a2 = AlertasLlantas.evaluar(contexto, 2, t2, reglas)
         val a3 = AlertasLlantas.evaluar(contexto, 3, t3, reglas)
 
-        // ---------- aceite ----------
-        // Sin ancla de odometro puesta a mano, el contador de kilometros no
-        // significa nada: diria "faltan 0 km" junto a un "100 %", que es una
-        // contradiccion en pantalla. Hasta que el dueño ancle con
-        // /aceite?odometro=, la tarjeta va en hueco.
-        val aceiteConfigurado = Mantenimiento.proximoCambioKm > 0f &&
-            Mantenimiento.odometroAnclaKm > 0f
-
         // ---------- luz de averia ----------
         // Solo si el 0101 llego fresco: sin el, "no lo se" — nunca "sin
         // averia", que es la respuesta tranquilizadora y falsa.
@@ -260,9 +252,6 @@ object EstadoDelTablero {
             ll3psi = psiCal(contexto, 3, t3?.presionPsi), ll3t = t3?.temperaturaC,
             ll3baja = a3 == AlertasLlantas.Tipo.Baja, ll3al = a3?.texto,
 
-            acePct = if (aceiteConfigurado) Mantenimiento.vidaPct else null,
-            aceKm = if (aceiteConfigurado) Math.round(Mantenimiento.kmRestantes) else null,
-            aceH = if (aceiteConfigurado) Math.round(Mantenimiento.horasRestantes) else null,
             radioC = if (Termometro.gradosC > 0) Termometro.gradosC else null,
 
             mil = if (estadoFresco) v.milEncendida else null,
@@ -277,6 +266,12 @@ object EstadoDelTablero {
             okNev = nevViva,
             okTpms = tp != null && tp.ruedas.isNotEmpty(),
             okObd = fresco(v.rpmAtMs, ahora) || fresco(v.coolantAtMs, ahora),
+
+            // El inclinometro solo vale con lectura de ahora: un angulo viejo
+            // haria creer que la camioneta sigue como estaba.
+            incSensor = Inclinometro.haySensor,
+            incAdelante = if (Inclinometro.vigente(ahora)) Inclinometro.redondo(Inclinometro.adelante) else null,
+            incLado = if (Inclinometro.vigente(ahora)) Inclinometro.redondo(Inclinometro.lado) else null,
         )
     }
 
@@ -331,13 +326,13 @@ object EstadoDelTablero {
         num("ll2psi", d.ll2psi); num("ll2t", d.ll2t); num("ll2baja", d.ll2baja); txt("ll2al", d.ll2al)
         num("ll3psi", d.ll3psi); num("ll3t", d.ll3t); num("ll3baja", d.ll3baja); txt("ll3al", d.ll3al)
 
-        num("acePct", d.acePct); num("aceKm", d.aceKm); num("aceH", d.aceH)
         num("radioC", d.radioC)
 
         num("mil", d.mil); num("codigos", d.codigos)
 
         num("okViv", d.okViv); num("okArr", d.okArr); num("okNev", d.okNev)
         num("okTpms", d.okTpms); num("okObd", d.okObd)
+        num("incSensor", d.incSensor); num("incAdelante", d.incAdelante); num("incLado", d.incLado)
 
         j.append('}')
         return j.toString()

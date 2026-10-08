@@ -39,8 +39,7 @@ package com.nonosky.carsoc.ui.lienzo
  * todavia; el motor (`Reparto`, `Pincel`) no la traia. **No la dupliquen**: si
  * a su seccion le falta un campo, añadanlo aqui, que los nombres estan copiados
  * del JSON y los tipos verificados contra las clases de origen
- * (`BateriaState`, `VehicleState`, `TpmsDecoder`, `Alpicool.Estado`,
- * `Mantenimiento`).
+ * (`BateriaState`, `VehicleState`, `TpmsDecoder`, `Alpicool.Estado`).
  *
  * Es un `data class` inmutable a proposito: se construye uno por vuelta de
  * lectura y se le pasa a los pintores. Nadie lo modifica a media pintada.
@@ -140,10 +139,7 @@ data class DatosTablero(
     val ll3baja: Boolean? = null,
     val ll3al: String? = null,
 
-    // ---------- aceite y radio ----------
-    val acePct: Int? = null,
-    val aceKm: Int? = null,
-    val aceH: Int? = null,
+    // ---------- radio ----------
     /** Temperatura del SoC del radio. La misma que gobierna el ritmo de
      *  repintado por `Termometro.msEntreCuadros()`. */
     val radioC: Int? = null,
@@ -163,6 +159,14 @@ data class DatosTablero(
     val okNev: Boolean? = null,
     val okTpms: Boolean? = null,
     val okObd: Boolean? = null,
+
+    // ---------- inclinometro ----------
+    /** ¿Tiene sensor el radio? null = todavia no se sabe; false = no tiene. */
+    val incSensor: Boolean? = null,
+    /** Grados, ya calibrados. Positivo: la nariz mas alta que la cola. */
+    val incAdelante: Float? = null,
+    /** Grados, ya calibrados. Positivo: el lado derecho mas bajo. */
+    val incLado: Float? = null,
 ) {
     companion object {
         /**

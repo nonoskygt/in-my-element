@@ -7,7 +7,7 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Las pruebas del trazado de LLANTAS Y ACEITE.
+ * Las pruebas del trazado de LLANTAS.
  *
  * Existen por la razon de siempre: el tablero Canvas viejo se rompio al pasar
  * de 1280x480 a 1024x600 —los numeros se pisaban— y nadie pudo verlo hasta que
@@ -70,15 +70,10 @@ class TrazadoLlantasTest {
 
             assertTrue("$donde: el reparto tendria que salir", t.valido)
             assertTrue("$donde: tarjeta de llantas", t.tarjetaLlantas.valida)
-            assertTrue("$donde: tarjeta de aceite", t.tarjetaAceite.valida)
 
-            // Las dos tarjetas dentro de la seccion y sin tocarse.
-            assertTrue("$donde: llantas dentro", dentroDe(t.tarjetaLlantas, seccion))
-            assertTrue("$donde: aceite dentro", dentroDe(t.tarjetaAceite, seccion))
-            assertFalse(
-                "$donde: las dos tarjetas se pisan",
-                seSolapan(t.tarjetaLlantas, t.tarjetaAceite),
-            )
+            // La tarjeta de llantas es la seccion entera: no la comparte con
+            // nadie, asi que no puede quedar sitio reservado para otra cosa.
+            assertEquals("$donde: la tarjeta es la seccion", seccion, t.tarjetaLlantas)
 
             // El rotulo y su aviso: repartidos, no superpuestos. Si se
             // pisaran, "LLANTAS" y "TD BAJA" saldrian una encima de otra.
@@ -125,17 +120,14 @@ class TrazadoLlantasTest {
                 }
             }
 
-            // El aceite entero, dentro de su tarjeta y sin pisarse.
-            val piezas = arrayOf(
-                t.tituloAceite, t.vida, t.faltanEtiqueta, t.faltanValor, t.barra, t.horas,
+            // Las casillas usan la tarjeta hasta abajo: la ultima fila de
+            // ruedas acaba cerca del borde inferior de la seccion, no a media
+            // altura dejando un hueco donde antes iba otra tarjeta.
+            val fondo = maxOf(t.casilla[2].y1, t.casilla[3].y1)
+            assertTrue(
+                "$donde: las ruedas no llegan al fondo de la tarjeta",
+                seccion.y1 - fondo < seccion.alto * 0.08f,
             )
-            for (c in piezas) {
-                assertTrue("$donde: pieza de aceite invalida", c.valida)
-                assertTrue("$donde: pieza de aceite fuera", dentroDe(c, t.tarjetaAceite))
-            }
-            assertFalse("$donde: vida y faltan se pisan", seSolapan(t.vida, t.faltanValor))
-            assertFalse("$donde: barra y horas se pisan", seSolapan(t.barra, t.horas))
-            assertFalse("$donde: titulo y vida se pisan", seSolapan(t.tituloAceite, t.vida))
         }
     }
 
@@ -243,19 +235,15 @@ class TrazadoLlantasTest {
     // --- 7 -------------------------------------------------------------------
 
     @Test
-    fun `una seccion apaisada se reparte en columnas y no se estruja`() {
-        // Si la vista coloca esta seccion en una banda ancha —900x160— dos
-        // filas no caben de ninguna manera. Girar el reparto si.
+    fun `una seccion apaisada se reparte sin estrujarse`() {
+        // Si la vista coloca esta seccion en una banda ancha —900x160— la
+        // tarjeta sigue siendo la banda entera y las cuatro ruedas caben.
         val ancha = Caja.pantalla(900f, 160f)
         val t = TrazadoLlantas()
         t.reparte(ancha)
 
         assertTrue("la banda ancha se reparte", t.valido)
-        assertTrue(
-            "llantas y aceite tendrian que quedar lado a lado",
-            t.tarjetaLlantas.x1 <= t.tarjetaAceite.x0 + EPS,
-        )
-        assertFalse("y sin pisarse", seSolapan(t.tarjetaLlantas, t.tarjetaAceite))
+        assertEquals("la tarjeta es la banda entera", ancha, t.tarjetaLlantas)
         for (i in 0..3) {
             assertTrue("casilla $i en la banda ancha", t.casilla[i].valida)
             assertTrue("casilla $i dentro", dentroDe(t.casilla[i], t.tarjetaLlantas))

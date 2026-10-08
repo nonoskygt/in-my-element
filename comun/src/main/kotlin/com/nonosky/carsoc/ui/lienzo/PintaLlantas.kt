@@ -12,10 +12,10 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * LLANTAS Y ACEITE de la variante Canvas.
+ * LAS LLANTAS de la variante Canvas.
  *
- * Replica las dos tarjetas del tablero HTML —`section.card` de LLANTAS y la
- * de ACEITE— con las reglas del encargo:
+ * Replica la tarjeta de LLANTAS del tablero HTML (`section.card`), dueña de la
+ * columna entera, con las reglas del encargo:
  *
  * - Las cuatro ruedas en rejilla, en ORDEN DE LECTURA: arriba-izquierda es la
  *   delantera izquierda. La posicion en pantalla es parte del dato.
@@ -24,8 +24,6 @@ import kotlin.math.roundToInt
  *   temperatura delata un freno pegado o un roce antes que la presion.
  * - El rotulo (DI/DD/TI/TD) a la DERECHA, sobre el dibujo de la rueda, con el
  *   taco encendido en la esquina que le toca: el dibujo tambien dice cual es.
- * - La vida del aceite con su barra y los dos contadores, km y horas, porque
- *   manda el que antes se agote.
  *
  * ## Ninguna medida sale de la pantalla
  *
@@ -51,8 +49,7 @@ import kotlin.math.roundToInt
  * Una sola alerta puede gritar, y en esta seccion es **el aviso del rotulo**,
  * que nombra la rueda baja y parpadea entre oxido y ocre —nunca se apaga del
  * todo: una alerta que desaparece medio segundo se puede perder—. La casilla
- * de la rueda se pinta en oxido pero QUIETA, y el aceite no parpadea jamas: un
- * aceite gastado no es una urgencia a 100 km/h. La marca de "no cabe" tampoco
+ * de la rueda se pinta en oxido pero QUIETA. La marca de "no cabe" tampoco
  * parpadea, que es un defecto de pintado y no una averia del carro.
  *
  * ## Hilo
@@ -90,7 +87,7 @@ object PintaLlantas {
         letterSpacing = 0.20f
     }
 
-    /** Letra menuda: etiquetas, el aviso, la nota del pie. */
+    /** Letra menuda: el aviso del rotulo y la palabra de la alerta. */
     private val menudo = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = negrita
         letterSpacing = 0.14f
@@ -104,7 +101,8 @@ object PintaLlantas {
     // puede evitar del todo —`drawText` quiere un String— pero si se puede
     // hacer una sola vez por CAMBIO de valor en vez de una por cuadro.
 
-    private const val RANURAS = 11
+    /** Una por numero: las cuatro presiones (0-3) y las cuatro temperaturas (4-7). */
+    private const val RANURAS = 8
     private const val SIN_VALOR = Int.MIN_VALUE
 
     private val textos = arrayOfNulls<String>(RANURAS)
@@ -140,7 +138,6 @@ object PintaLlantas {
         }
 
         if (trazado.hayLlantas) pintarLlantas(canvas, d, ahora, pincel)
-        pintarAceite(canvas, d, pincel)
     }
 
     /**
@@ -353,59 +350,6 @@ object PintaLlantas {
         relleno.alpha = 255
     }
 
-    // --- Aceite -------------------------------------------------------------
-
-    /**
-     * La vida del aceite: el porcentaje, lo que falta por kilometros, la barra
-     * y lo que falta por horas.
-     *
-     * Los DOS contadores porque manda el que antes se agote: un motor que pasa
-     * la vida ralentizando en un campamento gasta aceite sin sumar kilometros,
-     * y con solo el odometro llegaria al cambio tarde.
-     *
-     * Nada de esto parpadea nunca. El aceite se cambia el sabado, no en la
-     * curva; robarle el parpadeo a la llanta baja seria cambiar una urgencia
-     * por un recado.
-     */
-    private fun pintarAceite(canvas: Canvas, d: DatosTablero, pincel: Pincel) {
-        tarjeta(canvas, trazado.tarjetaAceite)
-        pincel.tituloDeSeccion(canvas, trazado.tituloAceite, "ACEITE", Pincel.OCRE)
-
-        val pct = d.acePct
-        val colorVida = colorDeVida(pct)
-
-        pincel.cifraGrande(canvas, trazado.vida, entero(8, pct), "%", colorVida)
-
-        menudo.color = Pincel.APAGADO
-        texto(canvas, trazado.faltanEtiqueta, "FALTAN", menudo, 0.74f, centrado = false)
-        pincel.cifraGrande(
-            canvas, trazado.faltanValor,
-            entero(9, d.aceKm), "km",
-            if (d.aceKm == null) Pincel.APAGADO else Pincel.TINTA,
-        )
-
-        // null NO es cero: sin ancla de odometro la barra se queda vacia del
-        // todo, que es distinto de un deposito de vida agotado.
-        pincel.barra(
-            canvas, trazado.barra,
-            pct?.let { (it / 100f).coerceIn(0f, 1f) },
-            if (colorVida == Pincel.TINTA) Pincel.OCRE else colorVida,
-        )
-
-        pincel.filaGrande(
-            canvas, trazado.horas,
-            "POR HORAS", entero(10, d.aceH), "h",
-            if (d.aceH == null) Pincel.APAGADO else Pincel.TINTA,
-        )
-
-        // La nota es lo UNICO de esta seccion que puede desaparecer sin marca:
-        // no lleva un dato dentro. Antes que pintarla ilegible, no se pinta.
-        if (trazado.nota.valida && trazado.nota.alto >= MINIMO_NOTA_PX) {
-            menudo.color = Pincel.APAGADO
-            texto(canvas, trazado.nota, "MANDA EL QUE ANTES SE AGOTE", menudo, 0.62f, false)
-        }
-    }
-
     // --- Color por umbral ---------------------------------------------------
 
     /**
@@ -433,13 +377,6 @@ object PintaLlantas {
     private fun colorDeTemperatura(c: Int?, alerta: Boolean): Int = when {
         c == null -> Pincel.APAGADO
         alerta -> Pincel.OXIDO
-        else -> Pincel.TINTA
-    }
-
-    private fun colorDeVida(pct: Int?): Int = when {
-        pct == null -> Pincel.APAGADO
-        pct <= 0 -> Pincel.OXIDO
-        pct <= AVISO_VIDA_PCT -> Pincel.OCRE
         else -> Pincel.TINTA
     }
 
@@ -630,12 +567,6 @@ object PintaLlantas {
     private val PALABRA = arrayOf("BAJA", "ALTA", "CALIENTE")
     private val PLURAL = arrayOf("BAJAS", "ALTAS", "CALIENTES")
 
-    /** Vida de aceite por debajo de la cual la tarjeta se pone ocre. */
-    private const val AVISO_VIDA_PCT = 10
-
-    /** Por debajo de esto la nota del pie no se lee, y no se pinta. */
-    private const val MINIMO_NOTA_PX = 7f
-
     // El `viewBox` del dibujo de la rueda, tal cual el del HTML.
     private const val VB_ANCHO = 18f
     private const val VB_ALTO = 28f
@@ -646,7 +577,7 @@ object PintaLlantas {
 }
 
 /**
- * DONDE va cada cosa de la seccion de llantas y aceite.
+ * DONDE va cada cosa de la seccion de llantas.
  *
  * Vive aparte del pintado por dos razones, y las dos importan:
  *
@@ -673,7 +604,7 @@ class TrazadoLlantas {
     var valido: Boolean = false
         private set
 
-    /** Este carro lleva TPMS. Si no, el aceite se queda con la caja entera. */
+    /** Este carro lleva TPMS. Si no, la seccion se queda vacia. */
     var hayLlantas: Boolean = false
         private set
 
@@ -681,8 +612,8 @@ class TrazadoLlantas {
     var aire: Float = 0f
         private set
 
+    /** La tarjeta entera: es la seccion completa, no la comparte con nadie. */
     var tarjetaLlantas: Caja = Caja.NADA; private set
-    var tarjetaAceite: Caja = Caja.NADA; private set
 
     /** El rotulo cuando NO hay aviso: la franja entera. */
     var tituloLlantas: Caja = Caja.NADA; private set
@@ -711,14 +642,6 @@ class TrazadoLlantas {
     /** La banda de la palabra, una por rueda. Solo se usa en la variante 1. */
     val bandera = Array(4) { Caja.NADA }
 
-    var tituloAceite: Caja = Caja.NADA; private set
-    var vida: Caja = Caja.NADA; private set
-    var faltanEtiqueta: Caja = Caja.NADA; private set
-    var faltanValor: Caja = Caja.NADA; private set
-    var barra: Caja = Caja.NADA; private set
-    var horas: Caja = Caja.NADA; private set
-    var nota: Caja = Caja.NADA; private set
-
     /**
      * Reparte [caja] entera. No hace nada si ya estaba repartida.
      *
@@ -739,27 +662,16 @@ class TrazadoLlantas {
 
         if (!hayLlantas) {
             // Un carro sin TPMS no tiene por que enseñar cuatro casillas
-            // vacias: el aceite se queda con todo.
-            tarjetaAceite = caja
-        } else {
-            // El presupuesto del HTML, tal cual: la tarjeta de llantas mide
-            // 296 y la de aceite 216. Son PESOS, no pixeles — en otra
-            // pantalla dan otros tamaños en la misma proporcion.
-            //
-            // Y si la seccion llega apaisada —porque la vista la coloque en
-            // una banda ancha— se reparte en columnas en vez de en filas. Una
-            // tarjeta de 900x120 partida en dos filas no cabe de ninguna
-            // manera, y encogerla no es la respuesta: girarla si.
-            val enColumnas = caja.ancho > caja.alto * 1.5f
-            val partes =
-                if (enColumnas) Reparto.columnas(caja, PESOS_SECCION, aire)
-                else Reparto.filas(caja, PESOS_SECCION, aire)
-            tarjetaLlantas = partes[0]
-            tarjetaAceite = partes[1]
+            // vacias. La seccion se queda en blanco, y eso no es un fallo de
+            // reparto: no hay nada que colocar.
+            valido = true
+            return
         }
 
-        if (hayLlantas && !repartirLlantas()) return
-        if (!repartirAceite()) return
+        // La tarjeta de llantas es la seccion entera: no la comparte con
+        // ninguna otra.
+        tarjetaLlantas = caja
+        if (!repartirLlantas()) return
         valido = true
     }
 
@@ -817,32 +729,9 @@ class TrazadoLlantas {
         return psi[k].valida && temp[k].valida && marca[k].valida && dibujo[k].valida
     }
 
-    private fun repartirAceite(): Boolean {
-        val dentro = tarjetaAceite.margenRelativo(MARGEN_TARJETA)
-        if (!dentro.valida) return false
-
-        val filas = Reparto.filas(dentro, PESOS_ACEITE, aire * 0.3f)
-        tituloAceite = filas[0]
-        barra = filas[2]
-        horas = filas[3]
-        // La nota puede no caber sin que eso sea un fallo: es lo unico de la
-        // seccion que no lleva un dato dentro.
-        nota = filas[4]
-
-        val principal = Reparto.columnas(filas[1], PESOS_ACEITE_ARRIBA, aire)
-        vida = principal[0]
-        val derecha = Reparto.filas(principal[1], PESOS_FALTAN, 0f)
-        faltanEtiqueta = derecha[0]
-        faltanValor = derecha[1]
-
-        return tituloAceite.valida && barra.valida && horas.valida &&
-            vida.valida && faltanEtiqueta.valida && faltanValor.valida
-    }
-
     private fun vaciar() {
         hayLlantas = false
         tarjetaLlantas = Caja.NADA
-        tarjetaAceite = Caja.NADA
         tituloLlantas = Caja.NADA
         tituloCorto = Caja.NADA
         aviso = Caja.NADA
@@ -857,22 +746,18 @@ class TrazadoLlantas {
             marca[k] = Caja.NADA
             dibujo[k] = Caja.NADA
         }
-        tituloAceite = Caja.NADA
-        vida = Caja.NADA
-        faltanEtiqueta = Caja.NADA
-        faltanValor = Caja.NADA
-        barra = Caja.NADA
-        horas = Caja.NADA
-        nota = Caja.NADA
     }
 
     private companion object {
 
-        /** Llantas y aceite, con el presupuesto del HTML: 296 y 216. */
-        val PESOS_SECCION = floatArrayOf(296f, 216f)
-
-        /** Dentro de la tarjeta de llantas: rotulo 28, rejilla 244. */
-        val PESOS_LLANTAS = floatArrayOf(28f, 244f)
+        /**
+         * Dentro de la tarjeta de llantas: rotulo 28, rejilla 466.
+         *
+         * La tarjeta es la columna entera —unos 494 por dentro a 1024x600—,
+         * asi que con estos pesos el rotulo sigue midiendo unos 28 y todo lo
+         * que sobra va a las cuatro ruedas.
+         */
+        val PESOS_LLANTAS = floatArrayOf(28f, 466f)
 
         /** La franja del rotulo: nombre de la region y aviso. */
         val PESOS_ROTULO = floatArrayOf(56f, 44f)
@@ -888,15 +773,6 @@ class TrazadoLlantas {
 
         /** Con aviso: el cuerpo cede una banda para la palabra "BAJA". */
         val PESOS_CON_BANDERA = floatArrayOf(0.84f, 0.16f)
-
-        /** Aceite: rotulo, fila grande, barra, horas y nota. */
-        val PESOS_ACEITE = floatArrayOf(28f, 62f, 18f, 40f, 22f)
-
-        /** La fila grande: el porcentaje y lo que falta. */
-        val PESOS_ACEITE_ARRIBA = floatArrayOf(1f, 1.25f)
-
-        /** "FALTAN" encima de los kilometros. */
-        val PESOS_FALTAN = floatArrayOf(0.34f, 0.66f)
 
         /** El `padding` de una tarjeta, en fraccion de su lado corto. */
         const val MARGEN_TARJETA = 0.042f

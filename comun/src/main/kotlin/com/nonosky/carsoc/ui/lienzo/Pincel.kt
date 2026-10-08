@@ -597,7 +597,7 @@ class Pincel {
         /** Apagado: etiquetas, y TODO valor ausente o rancio. 5,4:1. */
         const val APAGADO = 0xFF8E968A.toInt()
 
-        /** Ocre: aceite, rotulos. */
+        /** Ocre: avisos, rotulos. */
         const val OCRE = 0xFFE0A84A.toInt()
 
         /** Musgo: litio, lo vivo. */

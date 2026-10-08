@@ -77,7 +77,6 @@ class DashService : Service() {
         // Antes que nada: sin contexto, el termometro se queda solo con
         // sysfs, que es justo lo que este radio no deja leer.
         Termometro.iniciar(applicationContext)
-        Mantenimiento.iniciar(applicationContext)
 
         puente = DebugServer(
             stateProvider = { EstadoActual.ultimo },
@@ -100,13 +99,6 @@ class DashService : Service() {
         // Ahora se sube de a una fuente, midiendo /termica entre cada paso.
         arrancarTpms()
         arrancarTermometro()
-        // La vida del aceite vive AQUI, en el servicio que no muere al cerrar
-        // el tablero. Cuenta horas de motor y kilometros por GPS, y las dos
-        // cosas tienen que seguir contando con la pantalla apagada — si solo
-        // contaran con el tablero abierto, el intervalo mediria cuanto mira
-        // el dueño la pantalla y no cuanto anda el carro.
-        arrancarKilometraje()
-        escucharGpsAjeno()
         arrancarBancosDeLitio()
         // Solo en el carro que la lleva: sin nevera era un hilo y un turno de
         // radio cada 30 s preguntando por una nevera que no existe.
@@ -194,7 +186,6 @@ class DashService : Service() {
         // El hermano del boton de prueba: aquel demuestra que la alarma suena,
         // este que hay algo detras dispuesto a tocarla. Se registran juntos
         // porque por separado cada uno engaña.
-        EstadoActual.gpsEncendido = { oyenteGps != null }
         EstadoActual.umbralPinchazo = "perder %.1f PSI o mas en %ds seguidos".format(
             PSI_CAIDA_PINCHAZO, MS_VENTANA_PINCHAZO / 1000,
         )
@@ -613,22 +604,6 @@ class DashService : Service() {
         }.onFailure { Log.w(TAG, "TPMS no arranco: ${it.message}") }
     }
 
-    private var oyenteGps: android.location.LocationListener? = null
-    private var ultimaPosicion: android.location.Location? = null
-
-    /**
-     * Cuenta kilometros por GPS. El odometro de la ECU no existe.
-     *
-     * Se le pregunto al carro que soporta y su mapa de PIDs se corta en el
-     * `0x20`: no hay odometro (`01A6`) ni tiempo de motor (`011F`). Si la ECU
-     * no los expone, la distancia hay que medirla por fuera.
-     *
-     * Se pide una muestra cada 5 s y con 10 m de movimiento minimo. No mas
-     * seguido: el receptor ya esta encendido para el resto del sistema —lo
-     * usan el launcher y la app del fabricante— asi que esto se cuelga de
-     * algo que ya corre, y pedir a 1 Hz solo añadiria calor a un radio que ya
-     * se apago tres veces por eso.
-     */
     /**
      * Los dos bancos de litio, cada uno por su MAC.
      *
@@ -659,66 +634,6 @@ class DashService : Service() {
         }.onFailure { Log.w(TAG, "no arranco la nevera: ${it.message}") }
     }
 
-    private fun arrancarKilometraje() {
-        // Si ya hay uno pedido, no se pide otro. Ahora que el GPS se enciende y
-        // se apaga solo, esta funcion se llama muchas veces, y sin esta guarda
-        // cada reanudacion dejaria un oyente mas apilado sobre el receptor:
-        // justo el gasto que todo esto viene a quitar.
-        if (oyenteGps != null) return
-        runCatching {
-            val lm = getSystemService(Context.LOCATION_SERVICE)
-                as? android.location.LocationManager ?: return
-            val oyente = object : android.location.LocationListener {
-                override fun onLocationChanged(pos: android.location.Location) {
-                    // Envuelto entero: esto llega en un hilo del sistema y una
-                    // excepcion suelta ahi se lleva el servicio, el puente y
-                    // el aviso de las llantas por delante.
-                    runCatching {
-                        val velocidad = if (pos.hasSpeed()) pos.speed else 0f
-                        val precision = if (pos.hasAccuracy()) pos.accuracy else 999f
-                        // Se anota ANTES de mirar si hay posicion previa. La
-                        // primera fija de cada arranque no produce distancia
-                        // —no hay contra que restar— y si solo se contaran las
-                        // que suman, un receptor que engancha de tarde en
-                        // tarde se veria exactamente igual que uno muerto.
-                        Mantenimiento.anotarFijaGps(velocidad, precision)
-                        if (velocidad >= ReglaGps.VELOCIDAD_MOVIMIENTO_MS) {
-                            ultimoMovimientoMs = System.currentTimeMillis()
-                        }
-                        val previa = ultimaPosicion
-                        ultimaPosicion = pos
-                        if (previa == null) return@runCatching
-                        Mantenimiento.sumarDistancia(
-                            previa.distanceTo(pos), velocidad, precision,
-                        )
-                    }
-                }
-
-                @Deprecated("Obligatorio hasta API 29")
-                override fun onStatusChanged(p: String?, e: Int, x: android.os.Bundle?) = Unit
-                override fun onProviderEnabled(p: String) = Unit
-                override fun onProviderDisabled(p: String) = Unit
-            }
-            // CON el Looper principal. Sin el, Android exige que el hilo que
-            // pide tenga Looper propio, y el latido —que es quien vuelve a
-            // encender el GPS tras apagarlo— no lo tiene: la peticion lanzaba
-            // "Can't create handler inside thread", quedaba en un Log.w, y el
-            // GPS solo se encendia la vez del arranque. Apagado una vez por el
-            // carro parado, no volvia NUNCA, ni con el motor girando. Visto en
-            // el emulador al probar la regla de ReglaGps.
-            lm.requestLocationUpdates(
-                android.location.LocationManager.GPS_PROVIDER, 5_000L, 10f, oyente,
-                android.os.Looper.getMainLooper(),
-            )
-            oyenteGps = oyente
-            Log.i(TAG, "kilometraje por GPS en marcha")
-        }.onFailure { Log.w(TAG, "GPS no arranco: ${it.message}") }
-    }
-
-    /** Cuando se vio el motor girando por ultima vez. Cero = nunca en esta vida. */
-    @Volatile
-    private var ultimoMotorVivoMs = 0L
-
     /**
      * Cierto mientras se leen codigos de averia.
      *
@@ -733,9 +648,8 @@ class DashService : Service() {
      * Si el dueño QUIERE el motor y la bateria encendidos.
      *
      * Empiezan en cierto, que es la correccion de un defecto que llevaba aqui
-     * desde el principio: `onCreate` levantaba el TPMS, el termometro y el
-     * GPS, pero el motor y la bateria SOLO se encendian llamando a `/fuente`
-     * por HTTP. Eso estuvo bien mientras se subian de a una midiendo el
+     * desde el principio: `onCreate` levantaba el TPMS y el termometro, pero
+     * el motor y la bateria SOLO se encendian llamando a `/fuente` por HTTP. Eso estuvo bien mientras se subian de a una midiendo el
      * consumo, y nunca se convirtio en arranque de verdad — asi que cada
      * reinicio del radio dejaba el tablero sin su razon de ser, y el dueño no
      * tiene forma de hacer un curl desde el carro.
@@ -759,104 +673,6 @@ class DashService : Service() {
      */
     @Volatile
     private var bateriaDeseada = false
-
-    /**
-     * Suelta el receptor de GPS.
-     *
-     * No pierde nada: los kilometros ya sumados viven en [Mantenimiento], que
-     * los guarda en disco. Lo unico que se va es el gasto.
-     */
-    private fun pararGps() {
-        val o = oyenteGps ?: return
-        oyenteGps = null
-        runCatching {
-            (getSystemService(Context.LOCATION_SERVICE)
-                as? android.location.LocationManager)?.removeUpdates(o)
-        }
-        Log.i(TAG, "GPS soltado")
-    }
-
-    /**
-     * ¿Hace falta el GPS ahora mismo? La regla vive en [ReglaGps], donde se
-     * prueba; aqui solo se le dan las señales y se apunta lo que decide.
-     */
-    private fun quiereGps(): Boolean {
-        val ahora = System.currentTimeMillis()
-        val st = EstadoActual.ultimo
-        val girando = st.rpm != null && !st.isStale(st.rpmAtMs, ahora)
-        if (girando) ultimoMotorVivoMs = ahora
-        val d = ReglaGps.decidir(
-            ReglaGps.Senales(
-                ahora = ahora,
-                permiteGps = Termometro.permiteGps(),
-                motorGirandoAhora = girando,
-                ultimoMotorVivoMs = ultimoMotorVivoMs,
-                ultimoMovimientoMs = ultimoMovimientoMs,
-                obdSabeDelMotor = macObd(applicationContext).isNotBlank() &&
-                    EstadoActual.adaptadorContestoMs > 0L &&
-                    ahora - EstadoActual.adaptadorContestoMs < MS_OBD_SABE,
-                escuchaDesdeMs = escuchaDesdeMs,
-            ),
-        )
-        if (d.abrirEscucha) escuchaDesdeMs = ahora
-        if (d.motivo != motivoGps) {
-            motivoGps = d.motivo
-            Log.i(TAG, "GPS ${if (d.encender) "encendido" else "apagado"}: ${d.motivo}")
-        }
-        return d.encender
-    }
-
-    /** Ultima fija —nuestra o de otra app— con el carro en movimiento. */
-    @Volatile
-    private var ultimoMovimientoMs = 0L
-
-    /** Cuando empezo la ultima escucha sin OBD. Ver [ReglaGps]. */
-    @Volatile
-    private var escuchaDesdeMs = 0L
-
-    /** Para registrar solo los cambios de motivo, no cada latido. */
-    @Volatile
-    private var motivoGps = ""
-
-    private var oyenteGpsAjeno: android.location.LocationListener? = null
-
-    /**
-     * Oye las fijas que piden OTRAS apps del radio (navegador, launcher), sin
-     * encender nada: el proveedor pasivo no gasta. Si alguien ya tiene el GPS
-     * encendido y el carro se mueve, aqui se sabe al momento, con OBD o sin el.
-     *
-     * Solo sirve para saber que el carro se mueve; los kilometros los sigue
-     * sumando unicamente el oyente propio. Por aqui tambien llegan nuestras
-     * fijas, y las de red, que son imprecisas: sumarlas contaria de mas.
-     */
-    private fun escucharGpsAjeno() {
-        if (oyenteGpsAjeno != null) return
-        runCatching {
-            val lm = getSystemService(Context.LOCATION_SERVICE)
-                as? android.location.LocationManager ?: return
-            val oyente = object : android.location.LocationListener {
-                override fun onLocationChanged(pos: android.location.Location) {
-                    runCatching {
-                        if (pos.provider == android.location.LocationManager.GPS_PROVIDER &&
-                            pos.hasSpeed() && pos.speed >= ReglaGps.VELOCIDAD_MOVIMIENTO_MS
-                        ) {
-                            ultimoMovimientoMs = System.currentTimeMillis()
-                        }
-                    }
-                }
-
-                @Deprecated("Obligatorio hasta API 29")
-                override fun onStatusChanged(p: String?, e: Int, x: android.os.Bundle?) = Unit
-                override fun onProviderEnabled(p: String) = Unit
-                override fun onProviderDisabled(p: String) = Unit
-            }
-            lm.requestLocationUpdates(
-                android.location.LocationManager.PASSIVE_PROVIDER, 5_000L, 10f, oyente,
-                android.os.Looper.getMainLooper(),
-            )
-            oyenteGpsAjeno = oyente
-        }.onFailure { Log.w(TAG, "no se pudo oir el GPS ajeno: ${it.message}") }
-    }
 
     /** De que se aviso ya a cada rueda, para no repetir la alerta. */
     private val ruedasAvisadas =
@@ -1461,33 +1277,10 @@ class DashService : Service() {
      */
     private fun arrancarTermometro() {
         thread(name = "termometro", isDaemon = true) {
-            var ultimoLatido = System.currentTimeMillis()
             while (vivo || !arranco) {
                 runCatching { Termometro.medir() }
 
-                // Horas de motor, sumadas aqui porque este hilo ya late cada
-                // cinco segundos y no cuesta nada mas. Se suma el tiempo REAL
-                // transcurrido y no un 5 fijo: si la ROM congela el proceso un
-                // rato, sumar la constante inventaria horas que no pasaron.
-                runCatching {
-                    val ahora = System.currentTimeMillis()
-                    val delta = ((ahora - ultimoLatido) / 1000L).coerceIn(0L, 30L)
-                    ultimoLatido = ahora
-                    val st = EstadoActual.ultimo
-                    val girando = (st.rpm ?: 0) >= Mantenimiento.RPM_MINIMO_MOTOR &&
-                        !st.isStale(st.rpmAtMs, ahora)
-                    if (girando) Mantenimiento.sumarSegundosMotor(delta)
-                }
-
-                // El GPS se enciende y se apaga solo, desde aqui, porque este
-                // hilo ya late cada cinco segundos y no cuesta nada mas. Es el
-                // mismo trato que ya tienen el OBD y la bateria: cuando el
-                // radio se calienta, se cede lo que no es imprescindible.
-                runCatching {
-                    if (quiereGps()) arrancarKilometraje() else pararGps()
-                }
-
-                // Y AQUI se levantan el motor y la bateria, que hasta hoy solo
+                // AQUI se levantan el motor y la bateria, que hasta hoy solo
                 // se encendian con un curl. Va en el latido y no en onCreate a
                 // proposito: en onCreate solo se intentaria UNA vez, y en este
                 // radio el Bluetooth tarda en estar listo tras el arranque —
@@ -1654,21 +1447,6 @@ class DashService : Service() {
 
     override fun onDestroy() {
         vivo = false
-        runCatching { Mantenimiento.guardarYa() }
-        runCatching {
-            oyenteGps?.let {
-                (getSystemService(Context.LOCATION_SERVICE)
-                    as? android.location.LocationManager)?.removeUpdates(it)
-            }
-        }
-        oyenteGps = null
-        runCatching {
-            oyenteGpsAjeno?.let {
-                (getSystemService(Context.LOCATION_SERVICE)
-                    as? android.location.LocationManager)?.removeUpdates(it)
-            }
-        }
-        oyenteGpsAjeno = null
         runCatching { enlaceInterno?.cancel() }
         runCatching { sondeoInterno?.stop() }
         runCatching { alcanceInterno?.cancel() }
@@ -1771,14 +1549,6 @@ class DashService : Service() {
          * la reconexion se iba a minutos. No es un numero de manual, es lo que
          * hizo falta.
          */
-        /**
-         * Cuanto vale el "el adaptador contesto" para decidir que el motor esta
-         * parado. Con la ECU muda el sondeo reintenta cada ~45 s como mucho
-         * (techo de retroceso mas la inicializacion), asi que dos minutos
-         * cubren una vuelta perdida sin dar por bueno un adaptador que se fue.
-         */
-        private const val MS_OBD_SABE = 2 * 60_000L
-
         private const val MS_SOLTAR_ADAPTADOR = 6_000L
 
         private const val NOTIF_PRESION_BASE = 100

@@ -12,7 +12,7 @@ import com.nonosky.carsoc.Carro
  * `mapOf(...)` con eso dentro vive en el heap **desde que arranca la app y
  * hasta que muere**, aunque el dueño no abra el diagnostico nunca — y el
  * tablero corre en un rk3326 que ya se apago tres veces por calor, con el
- * TPMS, el aceite y el puente encima.
+ * TPMS y el puente encima.
  *
  * Asi que la tabla vive en `res/raw`, se lee cuando se abre el diagnostico y
  * se SUELTA al cerrarlo. Mientras se maneja, esto ocupa cero.

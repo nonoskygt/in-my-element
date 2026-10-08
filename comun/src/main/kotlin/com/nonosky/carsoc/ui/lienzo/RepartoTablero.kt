@@ -32,9 +32,9 @@ import com.nonosky.carsoc.Carro
  * ## En que se aparta del HTML, y por que
  *
  * El HTML pinta seis tarjetas en dos filas. Los pintores de la variante Canvas
- * agrupan de otra forma —`PintaEnergia` lleva LOS DOS bancos, `PintaLlantas`
- * lleva llantas Y aceite— asi que aqui las columnas son de ALTO COMPLETO y cada
- * pintor parte la suya por dentro. El resultado en pantalla es el mismo dibujo;
+ * agrupan de otra forma —`PintaEnergia` lleva LOS DOS bancos y `PintaLlantas`
+ * se queda la columna entera— asi que aqui las columnas son de ALTO COMPLETO y
+ * cada pintor parte la suya por dentro. El resultado en pantalla es el mismo dibujo;
  * lo que cambia es quien corta que.
  *
  * Y los botones de AVERIAS y AJUSTES, que en el HTML viven en el rotulo de la
@@ -134,7 +134,7 @@ class RepartoTablero {
     var motor: Caja = Caja.NADA
         private set
 
-    /** `PintaLlantas`: llantas ARRIBA y aceite debajo, que las parte el. */
+    /** `PintaLlantas`: las cuatro ruedas, en la columna entera. */
     var llantas: Caja = Caja.NADA
         private set
 
@@ -269,13 +269,13 @@ class RepartoTablero {
         val PESOS_BOTONES = floatArrayOf(86f, 86f, 46f)
 
         /**
-         * CON NEVERA: energia (dos bancos), nevera + motor, llantas + aceite.
+         * CON NEVERA: energia (dos bancos), nevera + motor, llantas.
          * Es el presupuesto horizontal del HTML tal cual.
          */
         val PESOS_COLUMNAS_CON_NEVERA = floatArrayOf(396f, 264f, 320f)
 
         /**
-         * SIN NEVERA: energia (un banco), motor, llantas + aceite.
+         * SIN NEVERA: energia (un banco), motor, llantas.
          *
          * ⚠️ SUMA 980, LA MISMA QUE EL OTRO, y tiene que seguir sumandola: es
          * lo que hace que la columna de las llantas caiga en el mismo sitio en

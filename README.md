@@ -3,14 +3,15 @@
 Tablero en vivo para un **Honda Element 2003-2006** convertido en casa rodante,
 corriendo en el radio Android del carro (Android 9, 1024×600). Lee el motor por
 OBD-II, las dos baterías de litio y la refrigeradora por Bluetooth, la presión y
-temperatura de las llantas por un receptor TPMS USB, y cuenta la vida del aceite
-por GPS y horas de motor. Todo en una pantalla, sin internet.
+temperatura de las llantas por un receptor TPMS USB, y trae un inclinómetro para
+parquear a nivel y dormir derecho. Todo en una pantalla, sin internet.
 
 ![El tablero en el carro](docs/capturas/tablero.png)
 
-*Captura real del radio, con el motor en ralentí. Las MAC de las baterías y la
-refrigeradora van tapadas. El reloj de mezcla de esta captura es el anterior; el
-actual, con escala y aguja con inercia, es el de la captura «Editar un cuadro».*
+*Captura real del radio, con el motor en ralentí, del reparto anterior: todavía
+con las baterías en dos cuadros, el del aceite y el reloj de mezcla viejo. Las
+MAC de los aparatos van tapadas. La captura del reparto actual —un cuadro de
+baterías y el inclinómetro— se toma del radio en cuanto esté en línea.*
 
 ## Qué hace
 
@@ -20,8 +21,20 @@ de banda ancha del K24A4 (PID 0134) y se pinta en un reloj analógico: escala
 graduada, zonas rica / estequiométrica / pobre y una aguja que se desliza con
 inercia, como la de un instrumento de verdad. El VTEC se deduce de rpm y carga.
 
-**Baterías de litio (BMS JBD por Bluetooth LE).** Vivienda y arranque: carga,
-tensión, potencia con signo (verde entra, rojo sale), temperatura y autonomía.
+**Baterías de litio (BMS JBD por Bluetooth LE).** Las dos en un solo cuadro con
+pestañas: cada pestaña dice el % de su batería —no se pierde ninguna de vista— y
+el cuerpo enseña la elegida: carga, tensión, potencia con signo (verde entra,
+rojo sale), temperatura, y la autonomía de la vivienda o la corriente del
+arranque.
+
+**Inclinómetro, para dormir derecho.** Inspirado en el de las Montero de los
+ochenta: dos esferas de cara negra con bisel cromado y escala ámbar, y el
+dibujo de la Element que se inclina de verdad —de perfil para adelante y atrás,
+por detrás para los lados—, amortiguado como un instrumento de líquido. Cada
+esfera dice su ángulo con un decimal, y al lado dice si está **nivelada** y
+cuántos centímetros subir cada lado, calculado con la batalla (2,575 m) y la vía
+(1,58 m) de la Element. Usa el sensor del radio solo mientras se mira, y se pone
+a cero en Ajustes con la camioneta en plano.
 
 **Refrigeradora (Alpicool por Bluetooth LE).** Temperatura, consigna, encendido y
 modo eco, con mandos para subir, bajar y apagar.
@@ -38,9 +51,6 @@ modo eco, con mandos para subir, bajar y apagar.
 
 *Captura real: el límite de presión baja subido a 30 PSI para probarlo; la
 trasera izquierda, a 29, se pinta en rojo y la cabecera la nombra.*
-
-**Aceite.** Vida restante por kilómetros —medidos por GPS, con o sin OBD— y por
-horas de motor. Manda el que antes se agote.
 
 **Escanear código.** Un botón en la cabecera, junto a la tuerca:
 - lee los códigos guardados y los pendientes de la computadora del motor y de

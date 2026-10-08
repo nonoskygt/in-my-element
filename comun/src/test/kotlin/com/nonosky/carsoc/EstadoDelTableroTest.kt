@@ -57,9 +57,10 @@ class EstadoDelTableroTest {
             "ll1psi", "ll1t", "ll1baja", "ll1al",
             "ll2psi", "ll2t", "ll2baja", "ll2al",
             "ll3psi", "ll3t", "ll3baja", "ll3al",
-            "acePct", "aceKm", "aceH", "radioC",
+            "radioC",
             "mil", "codigos",
             "okViv", "okArr", "okNev", "okTpms", "okObd",
+            "incSensor", "incAdelante", "incLado",
         )
         assertEquals(esperadas, clavesDe(EstadoDelTablero.aJson(DatosTablero.VACIO)))
     }

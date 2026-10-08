@@ -8,9 +8,9 @@ import android.content.Context
  * Lo decide el dueño en Ajustes. Por omision SI, que es como funcionaba.
  *
  * Solo manda sobre la PANTALLA. El servicio arranca igual con el sistema: las
- * alertas de llanta baja, las baterias y el contador del aceite no dependen de
- * que el tablero este a la vista, y apagarlos con este interruptor seria
- * esconder un pinchazo para quitarse una pantalla de encima.
+ * alertas de llanta baja y las baterias no dependen de que el tablero este a
+ * la vista, y apagarlos con este interruptor seria esconder un pinchazo para
+ * quitarse una pantalla de encima.
  */
 object Arranque {
 

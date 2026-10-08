@@ -281,9 +281,6 @@ class PollScheduler(
                 _state.update { it.copy(connection = ConnectionState.Initializing) }
                 val session = Elm327Session(transport)
                 val info = session.initialize()
-                // El adaptador contesto. Que la ECU conteste o no se sabra en
-                // el pollLoop; esto ya dice que hay alguien al otro lado.
-                com.nonosky.carsoc.EstadoActual.adaptadorContestoMs = clock()
 
                 _state.update {
                     it.copy(

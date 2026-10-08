@@ -417,27 +417,6 @@ class DebugServer(
                         .getOrNull() ?: "el servicio no registro la prueba"
                     sendText(out, 200, "text/plain", r)
                 }
-                "/aceite" -> {
-                    val m = com.nonosky.carsoc.Mantenimiento
-                    consulta["odometro"]?.toFloatOrNull()?.let { m.anclarOdometro(it) }
-                    consulta["proximo"]?.toFloatOrNull()?.let { m.proximoCambioKm = it }
-                    consulta["intervalo"]?.toFloatOrNull()?.let { m.intervaloKm = it }
-                    consulta["horas"]?.toFloatOrNull()?.let { m.intervaloHoras = it }
-                    if (consulta["cambiado"] == "1") m.aceiteCambiado()
-                    // Desde que el GPS se apaga solo con el carro parado o con
-                    // el radio caliente, un "fijas=0" tiene DOS causas que se
-                    // arreglan distinto: la antena no ve el cielo, o lo
-                    // apagamos nosotros a proposito. Sin esta linea vuelven a
-                    // ser el mismo cero.
-                    val gps = EstadoActual.gpsEncendido?.invoke()
-                    val extra = "receptor GPS: " + when (gps) {
-                        true -> "encendido"
-                        false -> "APAGADO a proposito (carro parado, o radio caliente)"
-                        null -> "el servicio no lo publico"
-                    }
-                    sendText(out, 200, "text/plain",
-                        (m.diagnostico() + extra).joinToString(SALTO))
-                }
                 "/vtec" -> {
                     val seg = (consulta["segundos"]?.toIntOrNull() ?: 6).coerceIn(1, 60)
                     // Con `forzar=0` solo se lee. Hacia falta poder preguntar
@@ -848,7 +827,6 @@ class DebugServer(
               /log             bitacora de actualizaciones
               /update          busca e instala version nueva
               /vtec?segundos=6 enciende el aviso de VTEC un rato, solo para verlo
-              /aceite?odometro=&proximo=&intervalo=&horas=&cambiado=1  cuanto le queda al aceite y anotar el cambio hecho
               /adaptadores     adaptadores Bluetooth emparejados
               /elegir?mac=     elige adaptador OBD ya emparejado
               /buscar          barre el aire en busca de adaptadores

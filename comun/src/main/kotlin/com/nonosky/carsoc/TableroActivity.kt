@@ -220,11 +220,14 @@ class TableroActivity : Activity(), TableroLienzo.Mandos {
     override fun onStop() {
         web?.onPause()
         web?.pauseTimers()
+        // El sensor de inclinacion solo escucha mientras alguien mira.
+        Inclinometro.apagar()
         super.onStop()
     }
 
     override fun onStart() {
         super.onStart()
+        Inclinometro.encender(this)
         web?.resumeTimers()
         web?.onResume()
         // Por si en Ajustes se restauraron los cuadros mientras no se veia.
@@ -276,9 +279,9 @@ class TableroActivity : Activity(), TableroLienzo.Mandos {
 
     /**
      * La X de arriba a la derecha: cierra el tablero y deja el radio donde
-     * estaba. El servicio NO se cierra: las alertas de llanta, las baterias y
-     * el contador del aceite siguen, y el tablero se vuelve a abrir desde su
-     * icono o al encender el radio (si esta puesto en Ajustes).
+     * estaba. El servicio NO se cierra: las alertas de llanta y las baterias
+     * siguen, y el tablero se vuelve a abrir desde su icono o al encender el
+     * radio (si esta puesto en Ajustes).
      */
     override fun cerrar() {
         finish()

@@ -142,14 +142,6 @@ object EstadoActual {
     var buscarAdaptadores: (() -> List<String>)? = null
 
     /**
-     * Cuando contesto por ultima vez el adaptador OBD a la inicializacion,
-     * haya contestado o no la ECU. 0 = nunca. Si contesto hace poco y no hay
-     * RPM, el motor esta parado: lo usa la regla del GPS ([ReglaGps]).
-     */
-    @Volatile
-    var adaptadorContestoMs: Long = 0L
-
-    /**
      * La MAC del adaptador OBD asignado en el menu. Cadena vacia = ninguno.
      * La pone el servicio, que es quien tiene contexto.
      */
@@ -264,18 +256,6 @@ object EstadoActual {
      */
     @Volatile
     var umbralPinchazo: String? = null
-
-    /**
-     * Si el receptor de GPS esta pedido ahora mismo.
-     *
-     * Hace falta para no volver a quedarse a ciegas: desde que el GPS se
-     * enciende y se apaga solo, un `fijas=0` puede significar "la antena no
-     * ve el cielo" o "lo apagamos nosotros a proposito", y son cosas muy
-     * distintas.
-     */
-    @Volatile
-    var gpsEncendido: (() -> Boolean)? = null
-
 
     /**
      * Fuerza el aviso de VTEC hasta este instante. SOLO para verlo.
