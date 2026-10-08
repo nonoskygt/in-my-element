@@ -374,6 +374,14 @@ body.estrecho #compacto{display:block}
 .btn.grande{font-size:26px;letter-spacing:0;flex:0 0 62px}
 .btn.on{border-color:var(--moss);color:var(--moss)}
 .btn.off{border-color:var(--line2);color:var(--mute)}
+/* Encendido: el simbolo universal (IEC 5009) en vez de la palabra, que no
+   cabia. Verde con la nevera encendida; gris si no se sabe como esta. */
+.btn.pwr svg{display:block;width:24px;height:24px;fill:none;stroke:currentColor;
+             stroke-width:2.4;stroke-linecap:round}
+.btn.pwr.encendida{border-color:var(--moss);color:var(--moss)}
+/* Los cuatro mandos de la nevera a partes iguales: con tres de 62 px y el
+   cuarto con su minimo, la fila medía mas que el cuadro y se salia. */
+.mandos .btn{flex:1 1 0;min-width:0}
 
 /* ============================ LLANTAS ============================ */
 .chip-al{display:flex;align-items:center;font-size:8px;font-weight:700;letter-spacing:.16em;
@@ -1003,7 +1011,7 @@ body.estrecho #compacto{display:block}
       <div class="mandos">
         <div class="btn grande" id="nev-menos">&minus;</div>
         <div class="btn grande" id="nev-mas">+</div>
-        <div class="btn" id="nev-poder">Apagar</div>
+        <div class="btn grande pwr" id="nev-poder" role="button" aria-label="Encender o apagar la nevera"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8v8.6"/><path d="M6.6 6.2a8 8 0 1 0 10.8 0"/></svg></div>
         <div class="btn" id="nev-eco">Eco</div>
       </div>
 
@@ -2071,9 +2079,11 @@ body.estrecho #compacto{display:block}
 
     var bp = el("nev-poder");
     if(bp){
-      bp.textContent = (ultimoEncendida === null) ? GUION
-        : (ultimoEncendida ? "Apagar" : "Encender");
+      // El simbolo de encendido no cambia; cambia el color: verde si la
+      // nevera dice que esta encendida, gris si no se sabe.
+      bp.classList.toggle("encendida", ultimoEncendida === true);
       bp.classList.toggle("off", ultimoEncendida === null);
+      bp.setAttribute("aria-label", ultimoEncendida ? "Apagar la nevera" : "Encender la nevera");
     }
     var be = el("nev-eco");
     if(be){

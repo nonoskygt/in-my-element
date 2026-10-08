@@ -47,8 +47,11 @@ object MotorK24A4 : Motor {
      * Por eso el aviso es una LAMPARA de estado y no un fondo rojo
      * parpadeante: a esta frecuencia, un fogonazo a pantalla completa tendria
      * la pantalla latiendo todo el viaje.
+     *
+     * Se usa 2.300 —el medio de los enganches registrados— y no 2.200: con
+     * 2.200 y la carga baja de antes, el dueño lo vio entrar antes de tiempo.
      */
-    override val rpmVtec = 2_200
+    override val rpmVtec = 2_300
 
     /**
      * Histeresis del VTEC, en rpm.
@@ -68,12 +71,21 @@ object MotorK24A4 : Motor {
     override val rpmShiftAmber = 6_000
 
     /**
-     * Carga minima (%) para considerar el VTEC enganchado.
+     * Carga minima (%) para SEGUIR con el VTEC enganchado.
      *
-     * Los logs dan ~91 % al enganchar y 71 % al soltar. Se usa 70 como guarda:
-     * sin ella, cualquier subida de vueltas en retencion cantaria VTEC.
+     * Los logs dan ~91 % al enganchar y 71 % al soltar. Sin guarda, cualquier
+     * subida de vueltas en retencion cantaria VTEC.
      */
     override val vtecMinLoadPct = 70
+
+    /**
+     * Carga minima (%) para ENGANCHAR: los logs dan ~91 %.
+     *
+     * ⚠️ Antes se usaba 70 tambien para entrar, y con carga media el tablero
+     * lo daba por enganchado cuando el motor todavia no habia cambiado: el
+     * dueño lo noto. Ahora entra con 90 y se sostiene con 70, como en los logs.
+     */
+    override val vtecCargaEnganche = 90
 
     /** Antiguedad (ms) a partir de la cual un valor se dibuja en gris. */
     override val staleAfterMs = 3_000L

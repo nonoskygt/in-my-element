@@ -8,9 +8,8 @@ import org.junit.Test
 /**
  * El VTEC del K24A4, con SUS numeros.
  *
- * Vive en el sabor `element` porque afirma cifras de ESTE motor: el codigo
- * del VTEC es compartido y lo que cambia de un motor a otro son las
- * constantes.
+ * Vive en la app porque afirma cifras de ESTE motor: el codigo del VTEC es
+ * de la libreria y lo que cambia de un motor a otro son las constantes.
  *
  * ⚠️ Estos umbrales estan SIN CALIBRAR contra el carro. Salen de datalogs de
  * un K24A4 de Accord —mismo motor, otro vehiculo— leyendo el solenoide con
@@ -21,53 +20,47 @@ import org.junit.Test
 class VtecK24A4Test {
 
     @Test
-    fun `este motor engancha MUY abajo`() {
-        // La cifra que define al carro: 2.200. Aqui el
-        // VTEC entra y sale en cada cuesta, y por eso el aviso es una
-        // lampara y no un fogonazo a pantalla completa.
-        assertEquals(2_200, MotorK24A4.rpmVtec)
-        assertFalse(MotorK24A4.vtecActive(rpm = 2_199, loadPct = 100))
-        assertTrue(MotorK24A4.vtecActive(rpm = 2_200, loadPct = 70))
+    fun `engancha abajo, pero con el pedal pisado`() {
+        assertEquals(2_300, MotorK24A4.rpmVtec)
+        assertEquals(90, MotorK24A4.vtecCargaEnganche)
+        assertTrue(MotorK24A4.vtecActive(rpm = 2_300, loadPct = 90))
+        assertFalse("sin las vueltas no entra", MotorK24A4.vtecActive(rpm = 2_299, loadPct = 100))
     }
 
     @Test
-    fun `necesita revoluciones Y carga`() {
+    fun `con carga media NO engancha aunque haya vueltas`() {
+        // Esto es lo que se corrigio: con la guarda de 70 tambien para
+        // entrar, el tablero lo cantaba antes de que el motor cambiara.
+        assertFalse(MotorK24A4.vtecActive(rpm = 3_000, loadPct = 80))
         assertFalse(MotorK24A4.vtecActive(rpm = 5_000, loadPct = 15))
-        assertTrue(MotorK24A4.vtecActive(rpm = 5_000, loadPct = 80))
+        assertTrue(MotorK24A4.vtecActive(rpm = 5_000, loadPct = 92))
     }
 
     @Test
-    fun `la carga corta por debajo del setenta por ciento`() {
-        // 69 % no basta ni a 6.000 rpm. La guarda existe para no cantar
-        // VTEC en retencion, que es cuando las vueltas suben sin pedal.
-        assertFalse(MotorK24A4.vtecActive(rpm = 6_000, loadPct = 69))
-        assertTrue(MotorK24A4.vtecActive(rpm = 6_000, loadPct = 70))
-    }
-
-    @Test
-    fun `una vez enganchado aguanta hasta el umbral de suelta`() {
-        // Entre 2.100 y 2.200 el resultado DEPENDE de si ya venia
-        // enganchado. Sin esta histeresis la lampara parpadearia sin parar
-        // en ciudad, que en este motor es la situacion normal.
+    fun `ya enganchado, aguanta con menos vueltas y menos carga`() {
+        // Entre 2.100 y 2.300, y entre 70 % y 90 %, el resultado DEPENDE de
+        // si ya venia enganchado. Sin esta histeresis la lampara parpadearia
+        // sin parar en ciudad, que en este motor es la situacion normal.
         assertFalse(
-            "a 2150 sin venir de enganchado, no engancha",
-            MotorK24A4.vtecActive(rpm = 2_150, loadPct = 90, enganchadoAntes = false),
+            "a 2200 y 75 % sin venir de enganchado, no engancha",
+            MotorK24A4.vtecActive(rpm = 2_200, loadPct = 75, enganchadoAntes = false),
         )
         assertTrue(
-            "a 2150 viniendo de enganchado, sigue",
-            MotorK24A4.vtecActive(rpm = 2_150, loadPct = 90, enganchadoAntes = true),
+            "a 2200 y 75 % viniendo de enganchado, sigue",
+            MotorK24A4.vtecActive(rpm = 2_200, loadPct = 75, enganchadoAntes = true),
         )
         assertFalse(
             "a 2099 se suelta aunque viniera enganchado",
             MotorK24A4.vtecActive(rpm = 2_099, loadPct = 90, enganchadoAntes = true),
         )
+        assertFalse(
+            "con 69 % se suelta aunque viniera enganchado",
+            MotorK24A4.vtecActive(rpm = 3_000, loadPct = 69, enganchadoAntes = true),
+        )
     }
 
     @Test
-    fun `el perfil dice que este carro SI puede tener AFR real`() {
-        // Lleva sonda LAF de banda ancha de fabrica, asi que el reloj de
-        // mezcla tiene sentido — aunque siga sin confirmarse que la ECU
-        // exponga el 0134.
+    fun `el perfil dice que este carro SI tiene AFR real`() {
         assertTrue(PerfilElement.tieneAfrReal)
         assertFalse(PerfilElement.vtecEsAcontecimiento)
         assertTrue("es casa rodante: manda el litio", PerfilElement.esCasaRodante)
@@ -82,8 +75,9 @@ class VtecK24A4Test {
         assertTrue(MotorK24A4.rpmShiftAmber < MotorK24A4.rpmRedline)
         assertTrue(MotorK24A4.rpmRedline <= MotorK24A4.rpmFuelCut)
         assertTrue(MotorK24A4.rpmFuelCut <= MotorK24A4.rpmMax)
-        // Y la suelta del VTEC va por DEBAJO del enganche, o la histeresis no
-        // seria histeresis sino un parpadeo garantizado.
+        // La suelta va por DEBAJO del enganche, en vueltas y en carga, o la
+        // histeresis no seria histeresis sino un parpadeo garantizado.
         assertTrue(MotorK24A4.rpmVtecSuelta < MotorK24A4.rpmVtec)
+        assertTrue(MotorK24A4.vtecMinLoadPct < MotorK24A4.vtecCargaEnganche)
     }
 }
