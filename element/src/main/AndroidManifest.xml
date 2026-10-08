@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  "In my element" — el tablero del Honda Element. Los componentes compartidos
+  (tablero, configuracion, diagnostico, servicio) llegan del manifiesto de
+  :comun; aqui solo va lo que hace que esta app sea ESTA app.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:name=".InMyElementApp"
+        android:allowBackup="true"
+        android:icon="@drawable/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="false"
+        android:usesCleartextTraffic="true"
+        android:theme="@style/Theme.Oscuro" />
+
+</manifest>
